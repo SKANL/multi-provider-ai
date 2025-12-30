@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Chat Dashboard Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <style>
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-card: rgba(20, 20, 30, 0.8);
+  --bg-glass: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(255, 255, 255, 0.15);
+  --text-primary: #f0f0f5;
+  --text-secondary: #a0a0b0;
+  --text-muted: #606070;
+  --accent: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.3);
+  --groq: #f97316;
+  --cerebras: #8b5cf6;
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
+  --user-bubble: linear-gradient(135deg, #1e3a5f 0%, #1a2f4a 100%);
+  --assistant-bubble: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+  --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  --radius: 12px;
+  --radius-lg: 16px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* Layout */
+.app {
+  display: grid;
+  grid-template-columns: 300px 1fr 320px;
+  grid-template-rows: 60px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.header {
+  grid-column: 1 / -1;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  backdrop-filter: blur(20px);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse 2s infinite;
+}
+
+.status-dot.offline { background: var(--danger); animation: none; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--success); }
+  50% { opacity: 0.8; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2); }
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Sidebar - Conversations */
+.sidebar-left {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.conversation-item {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+
+.conversation-item:hover {
+  background: var(--bg-glass);
+  border-color: var(--border);
+}
+
+.conversation-item.active {
+  background: var(--bg-card);
+  border-color: var(--accent);
+}
+
+.conversation-title {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conversation-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Main Chat Area */
+.main {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.chat-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-secondary);
+}
+
+.chat-info h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chat-info p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.message {
+  display: flex;
+  gap: 14px;
+  max-width: 80%;
+  animation: fadeSlide 0.3s ease;
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message.user { align-self: flex-end; flex-direction: row-reverse; }
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.message.user .avatar { background: var(--accent); border: none; }
+
+.message-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.message-content {
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  line-height: 1.6;
+  background: var(--assistant-bubble);
+  border: 1px solid var(--border);
+}
+
+.message.user .message-content {
+  background: var(--user-bubble);
+  border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+}
+
+.message.assistant .message-content {
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+}
+
+.message-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.message-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.message:hover .message-actions { opacity: 1; }
+
+.msg-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: var(--transition);
+}
+
+.msg-action-btn:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+/* Code blocks */
+.message-content pre {
+  background: #0d1117;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+}
+
+.message-content code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+
+.message-content p code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Input Area */
+.input-area {
+  padding: 20px 24px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+}
+
+.prompt-pills {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.pill:hover, .pill.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.input-box {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  transition: var(--transition);
+}
+
+.input-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.input-box textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+  max-height: 150px;
+}
+
+.input-box textarea::placeholder { color: var(--text-muted); }
+
+.send-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.send-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Right Sidebar - Models */
+.sidebar-right {
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.model-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.model-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.model-card:hover {
+  border-color: var(--border-active);
+  transform: translateY(-1px);
+}
+
+.model-card.selected {
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.model-card.unavailable {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.model-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.model-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.provider-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.provider-badge.groq { background: var(--groq); color: white; }
+.provider-badge.cerebras { background: var(--cerebras); color: white; }
+
+.model-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  font-size: 11px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label { color: var(--text-muted); }
+.stat-value { font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+.rate-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.rate-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.rate-fill.warning { background: var(--warning); }
+.rate-fill.danger { background: var(--danger); }
+
+/* Stats Panel */
+.stats-panel {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.stat-box {
+  text-align: center;
+  padding: 10px;
+  background: var(--bg-glass);
+  border-radius: 8px;
+}
+
+.stat-box .value {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-box .label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Buttons */
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn:hover { background: var(--bg-glass); border-color: var(--border-active); }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: #5558e3;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: var(--transition);
+  z-index: 100;
+}
+
+.modal-overlay.open { opacity: 1; visibility: visible; }
+
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 500px;
+  max-height: 85vh;
+  overflow: hidden;
+  transform: scale(0.95) translateY(10px);
+  transition: var(--transition);
+}
+
+.modal-overlay.open .modal { transform: scale(1) translateY(0); }
+
+.modal-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 { font-size: 16px; font-weight: 600; }
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(85vh - 140px);
+}
+
+.form-group { margin-bottom: 18px; }
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.form-textarea { resize: vertical; min-height: 80px; }
+
+.range-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-wrapper input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.range-wrapper input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.range-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  min-width: 40px;
+  text-align: right;
+}
+
+.modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  padding: 14px 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideIn 0.3s ease;
+  box-shadow: var(--shadow-lg);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.toast.success { border-left: 3px solid var(--success); }
+.toast.warning { border-left: 3px solid var(--warning); }
+.toast.error { border-left: 3px solid var(--danger); }
+
+/* Empty State */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  max-width: 300px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .app { grid-template-columns: 260px 1fr 280px; }
+}
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar-left, .sidebar-right { display: none; }
+}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">🤖</div>
+        <span>AI Chat Dashboard</span>
+      </div>
+      <div class="api-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Conectando...</span>
+      </div>
+      <div class="header-actions">
+        <button class="btn" onclick="toggleAutoMode()" id="modeBtn">
+          <span id="modeIcon">🔄</span>
+          <span id="modeText">Auto</span>
+        </button>
+        <button class="btn" onclick="openSettings()">⚙️ Config</button>
+      </div>
+    </header>
+
+    <!-- Left Sidebar - Conversations -->
+    <aside class="sidebar-left">
+      <div class="sidebar-header">
+        <button class="btn btn-primary" style="width: 100%" onclick="newConversation()">
+          ➕ Nueva conversación
+        </button>
+      </div>
+      <div class="sidebar-content">
+        <div class="conversation-list" id="conversationList"></div>
+      </div>
+    </aside>
+
+    <!-- Main Chat -->
+    <main class="main">
+      <div class="chat-header">
+        <div class="chat-info">
+          <h2 id="chatTitle">Chat con IA</h2>
+          <p id="chatSubtitle">Rotación automática entre 13 modelos</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-sm" onclick="exportChat()">📥 Exportar</button>
+          <button class="btn btn-sm" onclick="clearChat()">🗑️ Limpiar</button>
+        </div>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">💬</div>
+          <div class="empty-title">Inicia una conversación</div>
+          <div class="empty-text">
+            Escribe un mensaje para comenzar. La API seleccionará automáticamente el mejor modelo disponible.
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="prompt-pills">
+          <button class="pill active" data-prompt="default">💬 Chat</button>
+          <button class="pill" data-prompt="code">👨‍💻 Código</button>
+          <button class="pill" data-prompt="creative">✨ Creativo</button>
+          <button class="pill" data-prompt="analyze">🔍 Análisis</button>
+        </div>
+        <div class="input-wrapper">
+          <div class="input-box">
+            <textarea id="messageInput" placeholder="Escribe tu mensaje... (Shift+Enter para nueva línea)" rows="1"></textarea>
+          </div>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M22 2L11 13M22 2L15 22L11 13L2 9L22 2Z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Sidebar - Models -->
+    <aside class="sidebar-right">
+      <div class="sidebar-header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600; font-size: 14px;">Modelos</span>
+          <button class="btn btn-sm btn-icon" onclick="refreshModels()" title="Actualizar">🔄</button>
+        </div>
+      </div>
+      <div class="model-list" id="modelList"></div>
+      <div class="stats-panel">
+        <div style="font-weight: 600; font-size: 12px; margin-bottom: 12px; text-transform: uppercase; color: var(--text-muted);">
+          Estadísticas de Sesión
+        </div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="value" id="statMessages">0</div>
+            <div class="label">Mensajes</div>
+          </div>
+          <div class="stat-box">
+            <div class="value" id="statTokens">0</div>
+            <div class="label">Tokens</div>
+          </div>
+          <div class="stat-box">
+            <div class="value" id="statModels">0</div>
+            <div class="label">Modelos</div>
+          </div>
+          <div class="stat-box">
+            <div class="value" id="statAvgTime">0s</div>
+            <div class="label">Prom. Resp.</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>⚙️ Configuración</h3>
+        <button class="modal-close" onclick="closeSettings()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">URL de la API</label>
+          <input type="text" class="form-input" id="apiUrlInput" value="http://localhost:3000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">System Prompt</label>
+          <textarea class="form-textarea" id="systemPromptInput" rows="3">Eres un asistente útil y conciso. Responde en español.</textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estrategia de Rotación</label>
+          <select class="form-select" id="strategySelect">
+            <option value="round-robin">Round Robin (Secuencial)</option>
+            <option value="random">Aleatorio</option>
+            <option value="least-used">Menos Usado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Temperatura: <span id="tempValue">0.7</span></label>
+          <div class="range-wrapper">
+            <input type="range" id="tempSlider" min="0" max="1" step="0.1" value="0.7">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Max Tokens</label>
+          <select class="form-select" id="maxTokensSelect">
+            <option value="1024">1024</option>
+            <option value="2048">2048</option>
+            <option value="4096" selected>4096</option>
+            <option value="8192">8192</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeSettings()">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script>
+// ═══════════════════════════════════════════════════════════════
+// State Management
+// ═══════════════════════════════════════════════════════════════
+const state = {
+  conversations: [],
+  currentConversationId: null,
+  messages: [],
+  models: [],
+  selectedModel: null,
+  autoMode: true,
+  isLoading: false,
+  settings: {
+    apiUrl: 'http://localhost:3000',
+    systemPrompt: 'Eres un asistente útil y conciso. Responde en español.',
+    strategy: 'round-robin',
+    temperature: 0.7,
+    maxTokens: 4096
+  },
+  stats: {
+    messageCount: 0,
+    tokenCount: 0,
+    modelsUsed: new Set(),
+    responseTimes: []
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// DOM Elements
+// ═══════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+const els = {
+  messages: $('messages'),
+  messageInput: $('messageInput'),
+  sendBtn: $('sendBtn'),
+  modelList: $('modelList'),
+  conversationList: $('conversationList'),
+  emptyState: $('emptyState'),
+  statusDot: $('statusDot'),
+  statusText: $('statusText'),
+  chatTitle: $('chatTitle'),
+  chatSubtitle: $('chatSubtitle'),
+  modeBtn: $('modeBtn'),
+  modeIcon: $('modeIcon'),
+  modeText: $('modeText'),
+  statMessages: $('statMessages'),
+  statTokens: $('statTokens'),
+  statModels: $('statModels'),
+  statAvgTime: $('statAvgTime')
+};
+
+// ═══════════════════════════════════════════════════════════════
+// API Functions
+// ═══════════════════════════════════════════════════════════════
+async function checkApiStatus() {
+  try {
+    const res = await fetch(`${state.settings.apiUrl}/`);
+    if (res.ok) {
+      els.statusDot.classList.remove('offline');
+      els.statusText.textContent = 'Conectado';
+      return true;
+    }
+  } catch (e) {}
+  els.statusDot.classList.add('offline');
+  els.statusText.textContent = 'Desconectado';
+  return false;
+}
+
+async function fetchModels() {
+  try {
+    const res = await fetch(`${state.settings.apiUrl}/models`);
+    const data = await res.json();
+    state.models = data.models || [];
+    renderModels();
+    return true;
+  } catch (e) {
+    console.error('Error fetching models:', e);
+    return false;
+  }
+}
+
+async function fetchUsage() {
+  try {
+    const res = await fetch(`${state.settings.apiUrl}/usage`);
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function sendChatRequest(content) {
+  if (state.isLoading || !content.trim()) return;
+  
+  state.isLoading = true;
+  els.sendBtn.disabled = true;
+  hideEmptyState();
+  
+  const startTime = Date.now();
+  
+  // Build messages array
+  const apiMessages = [];
+  if (state.settings.systemPrompt) {
+    apiMessages.push({ role: 'system', content: state.settings.systemPrompt });
+  }
+  apiMessages.push(...state.messages.map(m => ({ role: m.role, content: m.content })));
+  apiMessages.push({ role: 'user', content });
+  
+  // Add user message to UI
+  addMessage('user', content);
+  
+  // Build request body
+  const body = { messages: apiMessages };
+  if (!state.autoMode && state.selectedModel) {
+    body.model = state.selectedModel;
+  }
+  
+  // Create assistant message placeholder
+  const assistantMsg = addMessage('assistant', '', true);
+  
+  try {
+    const res = await fetch(`${state.settings.apiUrl}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || `HTTP ${res.status}`);
+    }
+    
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullContent = '';
+    
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      
+      const chunk = decoder.decode(value, { stream: true });
+      fullContent += chunk;
+      updateMessageContent(assistantMsg, fullContent);
+    }
+    
+    // Finalize
+    finalizeMessage(assistantMsg, fullContent);
+    state.messages.push({ role: 'assistant', content: fullContent });
+    
+    // Update stats
+    const responseTime = (Date.now() - startTime) / 1000;
+    state.stats.messageCount++;
+    state.stats.tokenCount += estimateTokens(content) + estimateTokens(fullContent);
+    state.stats.responseTimes.push(responseTime);
+    updateStats();
+    
+    // Save conversation
+    saveCurrentConversation();
+    
+    // Refresh models
+    setTimeout(fetchModels, 500);
+    
+  } catch (e) {
+    updateMessageContent(assistantMsg, `❌ Error: ${e.message}`);
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    state.isLoading = false;
+    els.sendBtn.disabled = false;
+    els.messageInput.focus();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UI Rendering
+// ═══════════════════════════════════════════════════════════════
+function renderModels() {
+  els.modelList.innerHTML = state.models.map(model => {
+    const isSelected = state.selectedModel === model.id;
+    const remaining = model.rateLimit?.remainingTokens ?? 0;
+    const limit = model.rateLimit?.limitTokens ?? 1;
+    const usagePercent = Math.max(0, Math.min(100, 100 - (remaining / limit * 100)));
+    const barClass = usagePercent > 80 ? 'danger' : usagePercent > 50 ? 'warning' : '';
+    
+    return `
+      <div class="model-card ${isSelected ? 'selected' : ''} ${!model.available ? 'unavailable' : ''}"
+           onclick="selectModel('${model.id}')"
+           title="${!model.available ? model.reason || 'No disponible' : ''}">
+        <div class="model-header">
+          <span class="model-name">${model.name}</span>
+          <span class="provider-badge ${model.provider}">${model.provider}</span>
+        </div>
+        <div class="model-stats">
+          <div class="stat-item">
+            <span class="stat-label">Reqs</span>
+            <span class="stat-value">${model.rateLimit?.remainingRequests ?? '?'}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Tokens</span>
+            <span class="stat-value">${formatNumber(remaining)}</span>
+          </div>
+        </div>
+        <div class="rate-bar">
+          <div class="rate-fill ${barClass}" style="width: ${usagePercent}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  els.statModels.textContent = state.models.filter(m => m.available).length;
+}
+
+function renderConversations() {
+  els.conversationList.innerHTML = state.conversations.map(conv => `
+    <div class="conversation-item ${conv.id === state.currentConversationId ? 'active' : ''}"
+         onclick="loadConversation('${conv.id}')">
+      <div class="conversation-title">${conv.title || 'Sin título'}</div>
+      <div class="conversation-meta">${conv.messages?.length || 0} mensajes</div>
+    </div>
+  `).join('');
+}
+
+function addMessage(role, content, isStreaming = false) {
+  hideEmptyState();
+  
+  const msgEl = document.createElement('div');
+  msgEl.className = `message ${role}`;
+  msgEl.innerHTML = `
+    <div class="avatar">${role === 'user' ? '👤' : '🤖'}</div>
+    <div class="message-body">
+      <div class="message-content">${isStreaming ? renderTypingIndicator() : formatContent(content)}</div>
+      <div class="message-meta">
+        <span>${new Date().toLocaleTimeString()}</span>
+        <div class="message-actions">
+          <button class="msg-action-btn" onclick="copyMessage(this)" title="Copiar">📋</button>
+          ${role === 'assistant' ? '<button class="msg-action-btn" onclick="regenerate()" title="Regenerar">🔄</button>' : ''}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  els.messages.appendChild(msgEl);
+  scrollToBottom();
+  
+  if (role === 'user') {
+    state.messages.push({ role, content });
+  }
+  
+  return msgEl;
+}
+
+function updateMessageContent(msgEl, content) {
+  const contentEl = msgEl.querySelector('.message-content');
+  contentEl.innerHTML = escapeHtml(content) + '<span class="cursor">▌</span>';
+  scrollToBottom();
+}
+
+function finalizeMessage(msgEl, content) {
+  const contentEl = msgEl.querySelector('.message-content');
+  contentEl.innerHTML = formatContent(content);
+  Prism.highlightAllUnder(contentEl);
+}
+
+function renderTypingIndicator() {
+  return `<div class="typing-indicator">
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+    <div class="typing-dot"></div>
+  </div>`;
+}
+
+function updateStats() {
+  els.statMessages.textContent = state.stats.messageCount;
+  els.statTokens.textContent = formatNumber(state.stats.tokenCount);
+  els.statModels.textContent = state.models.filter(m => m.available).length;
+  
+  const times = state.stats.responseTimes;
+  const avg = times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : 0;
+  els.statAvgTime.textContent = avg + 's';
+}
+
+function scrollToBottom() {
+  els.messages.scrollTop = els.messages.scrollHeight;
+}
+
+function hideEmptyState() {
+  if (els.emptyState) els.emptyState.style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Actions
+// ═══════════════════════════════════════════════════════════════
+function sendMessage() {
+  const content = els.messageInput.value.trim();
+  if (content) {
+    els.messageInput.value = '';
+    autoResize();
+    sendChatRequest(content);
+  }
+}
+
+function selectModel(modelId) {
+  if (state.autoMode) {
+    state.autoMode = false;
+    updateModeUI();
+  }
+  state.selectedModel = state.selectedModel === modelId ? null : modelId;
+  renderModels();
+  
+  if (state.selectedModel) {
+    const model = state.models.find(m => m.id === modelId);
+    els.chatTitle.textContent = model?.name || modelId;
+    els.chatSubtitle.textContent = `Proveedor: ${model?.provider}`;
+  } else {
+    els.chatTitle.textContent = 'Chat con IA';
+    els.chatSubtitle.textContent = 'Selecciona un modelo';
+  }
+}
+
+function toggleAutoMode() {
+  state.autoMode = !state.autoMode;
+  if (state.autoMode) {
+    state.selectedModel = null;
+    renderModels();
+    els.chatTitle.textContent = 'Chat con IA';
+    els.chatSubtitle.textContent = 'Rotación automática entre 13 modelos';
+  }
+  updateModeUI();
+  showToast(state.autoMode ? 'Modo automático activado' : 'Modo manual - selecciona un modelo', 'success');
+}
+
+function updateModeUI() {
+  els.modeIcon.textContent = state.autoMode ? '🔄' : '🎯';
+  els.modeText.textContent = state.autoMode ? 'Auto' : 'Manual';
+}
+
+function refreshModels() {
+  fetchModels().then(() => showToast('Modelos actualizados', 'success'));
+}
+
+function clearChat() {
+  if (confirm('¿Eliminar todos los mensajes?')) {
+    state.messages = [];
+    els.messages.innerHTML = `
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">💬</div>
+        <div class="empty-title">Inicia una conversación</div>
+        <div class="empty-text">Escribe un mensaje para comenzar.</div>
+      </div>
+    `;
+    state.stats = { messageCount: 0, tokenCount: 0, modelsUsed: new Set(), responseTimes: [] };
+    updateStats();
+    showToast('Chat limpiado', 'success');
+  }
+}
+
+function exportChat() {
+  const data = {
+    exportedAt: new Date().toISOString(),
+    messages: state.messages,
+    stats: { ...state.stats, modelsUsed: [...state.stats.modelsUsed] }
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `chat-export-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  showToast('Chat exportado', 'success');
+}
+
+function copyMessage(btn) {
+  const content = btn.closest('.message').querySelector('.message-content').textContent;
+  navigator.clipboard.writeText(content);
+  showToast('Copiado al portapapeles', 'success');
+}
+
+function regenerate() {
+  if (state.messages.length < 2) return;
+  
+  // Remove last assistant message
+  state.messages.pop();
+  const lastUserMsg = state.messages[state.messages.length - 1];
+  
+  // Remove last two message elements
+  const msgEls = els.messages.querySelectorAll('.message');
+  if (msgEls.length >= 2) {
+    msgEls[msgEls.length - 1].remove();
+    msgEls[msgEls.length - 2].remove();
+  }
+  state.messages.pop();
+  
+  // Send again
+  sendChatRequest(lastUserMsg.content);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Conversations
+// ═══════════════════════════════════════════════════════════════
+function newConversation() {
+  saveCurrentConversation();
+  
+  const id = 'conv_' + Date.now();
+  state.conversations.unshift({ id, title: 'Nueva conversación', messages: [], createdAt: Date.now() });
+  state.currentConversationId = id;
+  state.messages = [];
+  
+  els.messages.innerHTML = `
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">💬</div>
+      <div class="empty-title">Inicia una conversación</div>
+      <div class="empty-text">Escribe un mensaje para comenzar.</div>
+    </div>
+  `;
+  
+  renderConversations();
+  saveConversations();
+}
+
+function loadConversation(id) {
+  saveCurrentConversation();
+  
+  const conv = state.conversations.find(c => c.id === id);
+  if (!conv) return;
+  
+  state.currentConversationId = id;
+  state.messages = conv.messages || [];
+  
+  els.messages.innerHTML = '';
+  if (state.messages.length === 0) {
+    els.messages.innerHTML = `
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">💬</div>
+        <div class="empty-title">Inicia una conversación</div>
+        <div class="empty-text">Escribe un mensaje para comenzar.</div>
+      </div>
+    `;
+  } else {
+    state.messages.forEach(m => {
+      const msgEl = document.createElement('div');
+      msgEl.className = `message ${m.role}`;
+      msgEl.innerHTML = `
+        <div class="avatar">${m.role === 'user' ? '👤' : '🤖'}</div>
+        <div class="message-body">
+          <div class="message-content">${formatContent(m.content)}</div>
+          <div class="message-meta">
+            <div class="message-actions">
+              <button class="msg-action-btn" onclick="copyMessage(this)" title="Copiar">📋</button>
+            </div>
+          </div>
+        </div>
+      `;
+      els.messages.appendChild(msgEl);
+    });
+    Prism.highlightAll();
+  }
+  
+  renderConversations();
+}
+
+function saveCurrentConversation() {
+  if (!state.currentConversationId) return;
+  
+  const conv = state.conversations.find(c => c.id === state.currentConversationId);
+  if (conv) {
+    conv.messages = state.messages;
+    if (state.messages.length > 0 && conv.title === 'Nueva conversación') {
+      conv.title = state.messages[0].content.slice(0, 40) + (state.messages[0].content.length > 40 ? '...' : '');
+    }
+  }
+  saveConversations();
+}
+
+function saveConversations() {
+  localStorage.setItem('ai_conversations', JSON.stringify(state.conversations));
+}
+
+function loadConversations() {
+  try {
+    const saved = localStorage.getItem('ai_conversations');
+    if (saved) state.conversations = JSON.parse(saved);
+  } catch (e) {}
+  
+  if (state.conversations.length === 0) {
+    newConversation();
+  } else {
+    state.currentConversationId = state.conversations[0].id;
+    loadConversation(state.currentConversationId);
+  }
+  renderConversations();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Settings
+// ═══════════════════════════════════════════════════════════════
+function openSettings() {
+  $('apiUrlInput').value = state.settings.apiUrl;
+  $('systemPromptInput').value = state.settings.systemPrompt;
+  $('strategySelect').value = state.settings.strategy;
+  $('tempSlider').value = state.settings.temperature;
+  $('tempValue').textContent = state.settings.temperature;
+  $('maxTokensSelect').value = state.settings.maxTokens;
+  $('settingsModal').classList.add('open');
+}
+
+function closeSettings() {
+  $('settingsModal').classList.remove('open');
+}
+
+function saveSettings() {
+  state.settings.apiUrl = $('apiUrlInput').value;
+  state.settings.systemPrompt = $('systemPromptInput').value;
+  state.settings.strategy = $('strategySelect').value;
+  state.settings.temperature = parseFloat($('tempSlider').value);
+  state.settings.maxTokens = parseInt($('maxTokensSelect').value);
+  
+  localStorage.setItem('ai_settings', JSON.stringify(state.settings));
+  closeSettings();
+  checkApiStatus();
+  fetchModels();
+  showToast('Configuración guardada', 'success');
+}
+
+function loadSettings() {
+  try {
+    const saved = localStorage.getItem('ai_settings');
+    if (saved) Object.assign(state.settings, JSON.parse(saved));
+  } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Utilities
+// ═══════════════════════════════════════════════════════════════
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${type === 'success' ? '✓' : type === 'warning' ? '⚠' : '✕'}</span><span>${message}</span>`;
+  $('toastContainer').appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideIn 0.3s ease reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatContent(content) {
+  return escapeHtml(content)
+    .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => 
+      `<pre><code class="language-${lang || 'plaintext'}">${code.trim()}</code></pre>`)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br>');
+}
+
+function formatNumber(num) {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num?.toString() || '0';
+}
+
+function estimateTokens(text) {
+  return Math.ceil((text || '').length / 4);
+}
+
+function autoResize() {
+  const ta = els.messageInput;
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 150) + 'px';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Event Listeners
+// ═══════════════════════════════════════════════════════════════
+els.messageInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+els.messageInput.addEventListener('input', autoResize);
+
+$$('.pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    $$('.pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    
+    const prompts = {
+      default: 'Eres un asistente útil y conciso. Responde en español.',
+      code: 'Eres un experto programador. Proporciona código limpio y comentado. Responde en español.',
+      creative: 'Eres un asistente creativo. Usa lenguaje expresivo e imaginativo. Responde en español.',
+      analyze: 'Eres un analista experto. Desglosa información y proporciona insights. Responde en español.'
+    };
+    
+    state.settings.systemPrompt = prompts[pill.dataset.prompt];
+  });
+});
+
+$('tempSlider').addEventListener('input', e => {
+  $('tempValue').textContent = e.target.value;
+});
+
+$('settingsModal').addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeSettings();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Initialize
+// ═══════════════════════════════════════════════════════════════
+async function init() {
+  loadSettings();
+  loadConversations();
+  
+  await checkApiStatus();
+  await fetchModels();
+  
+  // Auto-refresh every 10s
+  setInterval(() => {
+    checkApiStatus();
+    fetchModels();
+  }, 10000);
+  
+  els.messageInput.focus();
+}
+
+init();
+  </script>
+</body>
+</html>
